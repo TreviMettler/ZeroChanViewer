@@ -3,6 +3,7 @@ package com.infectedbyte.zerochanviewer.presentation.imageBrowseScreen.componets
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresExtension
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,17 +18,16 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DockedSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,6 +41,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.infectedbyte.zerochanviewer.domain.use_case.DownloadImages
 import com.infectedbyte.zerochanviewer.presentation.Screen
 import com.infectedbyte.zerochanviewer.presentation.imageBrowseScreen.ImageBrowseViewModel
 import kotlinx.coroutines.launch
@@ -52,9 +53,11 @@ fun ZeroImageListScreen(
     navController: NavController,
     viewModel: ImageBrowseViewModel = hiltViewModel(),
     modifier: Modifier = Modifier,
+
 ) {
 
     val state = viewModel.state.value
+    val images = state.images
     var expanded by rememberSaveable { mutableStateOf(false) }
     var privateSearchQuery by rememberSaveable { mutableStateOf("") }
     val scope = rememberCoroutineScope()
@@ -68,15 +71,14 @@ fun ZeroImageListScreen(
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .padding(8.dp, bottom = 12.dp),
+                    .padding(8.dp, bottom = 12.dp, top = 24.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
 
-                SearchBar(
+                DockedSearchBar(
                     modifier = Modifier
                         .padding(4.dp)
-                        .weight(9f)
-                        ,
+                        .weight(9f),
                     expanded = expanded,
                     inputField = {
                         SearchBarDefaults.InputField(
@@ -88,18 +90,29 @@ fun ZeroImageListScreen(
                             },
                             expanded = expanded,
                             onExpandedChange = {
-                                //TODO expanded = it
+                                expanded = it
                             },
                             placeholder = { Text("Search") },
                             trailingIcon = {
-                                Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
+                                IconButton(onClick = {
+                                    expanded = !expanded
+                                }) {
+                                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
+                                }
                             }
                         )
                     },
                     onExpandedChange = {
-                    //TODO expanded = it
+                    expanded = it
                     }
                 ) {
+                    Column {
+                        SortByRecency(viewModel)
+                        SortByDimensions(viewModel)
+                    }
+
+
+
 
                 }
 
@@ -108,7 +121,9 @@ fun ZeroImageListScreen(
                         .weight(1f)
                         .padding(bottom = 8.dp)
                         .align(Alignment.Bottom),
-                    onClick = {},
+                    onClick = {
+
+                    },
                 ) {
                     Icon(Icons.Default.Settings, "Settings")
                 }
@@ -148,7 +163,7 @@ fun ZeroImageListScreen(
 
         }
 
-        if (!state.isLoading && state.images.isNotEmpty()) {
+        if (!state.isLoading && images.isNotEmpty()) {
 
             LazyVerticalStaggeredGrid(
                 modifier = Modifier
@@ -157,20 +172,27 @@ fun ZeroImageListScreen(
                 columns = StaggeredGridCells.Fixed(2)
 
             ) {
-                items(state.images) { image ->
-                    ZeroImageItem(
-                        image,
-                        onClick = {
-                            if (!image.tags.contains("Ecchi")) {
-                                navController.navigate(Screen.ZeroImageScreenRoute(imageId = image.id.toString()))
-                            } else {
+                items(images) { image ->
+                    if (!image.tags.contains("Ecchi")) {
+                        ZeroImageItem(
+                            image,
+                            onClick = {
+                                if (!image.tags.contains("Ecchi")) {
+                                    navController.navigate(Screen.ZeroImageScreenRoute(imageId = image.id.toString()))
+                                } else {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("Can't Display Ecchi Images, Sorry")
+                                    }
+                                }
+                            },
+                            onDownloadClick = {
                                 scope.launch {
-                                    snackbarHostState.showSnackbar("Can't Display Ecchi Images, Sorry")
+                                    viewModel.saveImage(image.id.toString())
+
                                 }
                             }
-
-                        }
-                    )
+                        )
+                    }
                 }
 
             }
@@ -179,7 +201,7 @@ fun ZeroImageListScreen(
 
 
 
-        if (state.images.isEmpty() && !state.isLoading && state.error.isBlank()) {
+        if (images.isEmpty() && !state.isLoading && state.error.isBlank()) {
             Log.i("Ibyte", "list is empty")
 //            viewModel.onEvent(BrowserEvent.Refresh)
         }

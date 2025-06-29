@@ -25,5 +25,6 @@ class ZeroApplication: Application(), SingletonImageLoader.Factory {
                 .build()
              }
             .build()
+
     }
 }

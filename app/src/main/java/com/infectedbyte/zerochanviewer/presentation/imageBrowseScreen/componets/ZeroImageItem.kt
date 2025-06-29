@@ -37,6 +37,7 @@ import com.valentinilk.shimmer.shimmer
 fun ZeroImageItem(
     zeroImage: ZeroImage,
     onClick: (ZeroImage) -> Unit,
+    onDownloadClick: () -> Unit,
     modifier: Modifier = Modifier)
 {
     var imageBorder by remember { mutableStateOf(BorderStroke(1.dp, color = Color.Gray)) }
@@ -83,7 +84,7 @@ fun ZeroImageItem(
         ) {
             IconButton(
                 onClick = {
-
+                    onDownloadClick()
                 }
             ) {
                Icon(Icons.Default.Add, "Download")
