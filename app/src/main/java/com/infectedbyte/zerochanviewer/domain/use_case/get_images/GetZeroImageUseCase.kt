@@ -14,7 +14,7 @@ import java.io.IOException
 import javax.inject.Inject
 
 class GetZeroImageUseCase @Inject constructor(
-    private val repo: ZeroImageRespository,
+    private val repo: ZeroImageRespository
 ) {
 
     @RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)

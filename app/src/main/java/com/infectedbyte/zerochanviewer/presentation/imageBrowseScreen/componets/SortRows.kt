@@ -3,6 +3,7 @@ package com.infectedbyte.zerochanviewer.presentation.imageBrowseScreen.componets
 import android.os.Build
 import androidx.annotation.RequiresExtension
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,7 +15,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.infectedbyte.zerochanviewer.presentation.imageBrowseScreen.ImageBrowseViewModel
+import java.util.Locale
 
 
 @RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
@@ -23,33 +26,37 @@ fun SortByRecency(
     viewModel: ImageBrowseViewModel
 
 ) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text("Sort by:")
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 50.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
 
-        FilterChip(
-            onClick = {
-                viewModel.onEvent(BrowserEvent.SortRecently("latest"))
-            },
-            label = {
-                Text("Latest")
-            },
-            selected = viewModel.state.value.sortLatest
-        )
-        FilterChip(
-            onClick = {
-                viewModel.onEvent(BrowserEvent.SortRecently("popular"))
-            },
-            label = {
-                Text("popular")
-            },
-            selected = !viewModel.state.value.sortLatest
-        )
+            FilterChip(
+                onClick = {
+                    viewModel.onEvent(BrowserEvent.SortRecently("latest"))
+                },
+                label = {
+                    Text("Latest")
+                },
+                selected = viewModel.state.value.searchParameter.containsValue("id")
+            )
+            FilterChip(
+                onClick = {
+                    viewModel.onEvent(BrowserEvent.SortRecently("popular"))
+                },
+                label = {
+                    Text("popular")
+                },
+                selected = viewModel.state.value.searchParameter.containsValue("fav")
+            )
+        }
     }
 }
 
@@ -59,35 +66,32 @@ fun SortByDimensions(
     viewModel: ImageBrowseViewModel
 
 ) {
-    FlowRow(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
+    Column {
         Text("Dimensions:")
 
-        val sortDimensions = listOf("large", "huge", "landscape", "portrait", "square")
+        FlowRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 50.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            itemVerticalAlignment = Alignment.CenterVertically,
 
-        sortDimensions.forEach { dimensions ->
-
-            FilterChip(
-                onClick = {
-                    viewModel.onEvent(BrowserEvent.SortDimensions(dimensions))
-                },
-                label = {
-                    Text(dimensions)
-                },
-                selected = viewModel.state.value.sortDimension == dimensions
-            )
-        }
-        OutlinedButton(
-            onClick = {
-                viewModel.onEvent(BrowserEvent.SortDimensions(""))
-            }
         ) {
-            Text("Clear")
-        }
+            val sortDimensions = listOf("large", "huge", "landscape", "portrait", "square")
 
+            sortDimensions.forEach { dimensions ->
+
+                FilterChip(
+                    onClick = {
+                        viewModel.onEvent(BrowserEvent.SortDimensions(dimensions))
+                    },
+                    label = {
+                        Text(dimensions.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() })
+                    },
+                    selected = viewModel.state.value.sortDimension.contains(dimensions)
+                )
+            }
+
+        }
     }
 }

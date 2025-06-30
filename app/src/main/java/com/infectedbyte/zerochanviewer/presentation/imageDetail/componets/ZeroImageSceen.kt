@@ -198,7 +198,7 @@ fun ZeroImageScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         itemVerticalAlignment = Alignment.CenterVertically
                     ) {
-                        image.tags.forEach { tag ->
+                        image.tags.sorted().forEach { tag ->
                             ImageTag(modifier = Modifier, tag)
                         }
                     }

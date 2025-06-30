@@ -32,5 +32,3 @@ class ZeroImagesRepositoryImpl @Inject constructor(
 
     }
 }
-
-// TODO move resource wrapper to this function

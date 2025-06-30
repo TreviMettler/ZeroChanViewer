@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedCard
@@ -35,10 +38,13 @@ import com.valentinilk.shimmer.shimmer
 
 @Composable
 fun ZeroImageItem(
+    modifier: Modifier = Modifier,
     zeroImage: ZeroImage,
     onClick: (ZeroImage) -> Unit,
     onDownloadClick: () -> Unit,
-    modifier: Modifier = Modifier)
+    downloadState: Boolean?,
+    downloading: Boolean
+    )
 {
     var imageBorder by remember { mutableStateOf(BorderStroke(1.dp, color = Color.Gray)) }
     if (zeroImage.tags.contains("Ecchi")){
@@ -87,7 +93,23 @@ fun ZeroImageItem(
                     onDownloadClick()
                 }
             ) {
-               Icon(Icons.Default.Add, "Download")
+                if (!downloading) {
+                    when (downloadState) {
+                        null -> {
+                            Icon(Icons.Default.Add, "Download image")
+                        }
+
+                        true -> {
+                            Icon(Icons.Default.Check, "Download image", tint = Color.Green)
+
+                        }
+
+                        false -> {
+                            Icon(Icons.Default.Close, "Download image", tint = Color.Red)
+
+                        }
+                    }
+                } else { CircularProgressIndicator() }
             }
             Text(
                 text = zeroImage.tag,

@@ -1,9 +1,7 @@
 package com.infectedbyte.zerochanviewer.presentation.imageBrowseScreen.componets
 
 import android.os.Build
-import android.util.Log
 import androidx.annotation.RequiresExtension
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,22 +11,25 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DockedSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,7 +42,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.infectedbyte.zerochanviewer.domain.use_case.DownloadImages
 import com.infectedbyte.zerochanviewer.presentation.Screen
 import com.infectedbyte.zerochanviewer.presentation.imageBrowseScreen.ImageBrowseViewModel
 import kotlinx.coroutines.launch
@@ -55,17 +55,28 @@ fun ZeroImageListScreen(
     modifier: Modifier = Modifier,
 
 ) {
-
+    val scrollState = rememberLazyStaggeredGridState()
     val state = viewModel.state.value
     val images = state.images
     var expanded by rememberSaveable { mutableStateOf(false) }
     var privateSearchQuery by rememberSaveable { mutableStateOf("") }
     val scope = rememberCoroutineScope()
-    val snackbarHostState = remember { SnackbarHostState() }
+    val snackBarHostState = remember { SnackbarHostState() }
+
+    val shouldLoadMore by remember { derivedStateOf {
+        val itemCount = scrollState.layoutInfo.totalItemsCount
+        val lastVisibleItemIndex = scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+        itemCount > 0 && lastVisibleItemIndex >= itemCount - 10
+
+    } }
+
+    LaunchedEffect(shouldLoadMore) {
+        if (!state.isLoading) viewModel.onEvent(BrowserEvent.FetchNextPage)
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState)
+        snackbarHost = { SnackbarHost(hostState = snackBarHostState)
             },
         topBar = {
             Row(
@@ -75,7 +86,7 @@ fun ZeroImageListScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
 
-                DockedSearchBar(
+                SearchBar(
                     modifier = Modifier
                         .padding(4.dp)
                         .weight(9f),
@@ -110,10 +121,6 @@ fun ZeroImageListScreen(
                         SortByRecency(viewModel)
                         SortByDimensions(viewModel)
                     }
-
-
-
-
                 }
 
                 IconButton(
@@ -132,19 +139,7 @@ fun ZeroImageListScreen(
 
         }
     ) { padding ->
-        if (state.isLoading) {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                CircularProgressIndicator(
-                )
-            }
-
-        }
-
-        if (state.error.isNotBlank()) {
+        if (state.error.isNotBlank() && images.isEmpty()) {
             Column(Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally) {
@@ -160,51 +155,64 @@ fun ZeroImageListScreen(
                     viewModel.onEvent((BrowserEvent.Search(privateSearchQuery)))
                 }) { Text("Refresh")}
             }
-
         }
-
-        if (!state.isLoading && images.isNotEmpty()) {
-
             LazyVerticalStaggeredGrid(
+                state = scrollState,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
                 columns = StaggeredGridCells.Fixed(2)
-
             ) {
-                items(images) { image ->
-                    if (!image.tags.contains("Ecchi")) {
-                        ZeroImageItem(
-                            image,
-                            onClick = {
-                                if (!image.tags.contains("Ecchi")) {
-                                    navController.navigate(Screen.ZeroImageScreenRoute(imageId = image.id.toString()))
-                                } else {
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar("Can't Display Ecchi Images, Sorry")
-                                    }
-                                }
-                            },
-                            onDownloadClick = {
-                                scope.launch {
-                                    viewModel.saveImage(image.id.toString())
 
-                                }
-                            }
-                        )
+                if (!state.isLoading && images.isNotEmpty()) {
+                    items(images, key = {image -> image.id}) { image ->
+                        if (!image.tags.contains("Ecchi")) {
+                            ZeroImageItem(
+                                zeroImage = image,
+                                onClick = {
+                                    if (!image.tags.contains("Ecchi")) {
+                                        navController.navigate(Screen.ZeroImageScreenRoute(imageId = image.id.toString()))
+                                    } else {
+                                        scope.launch {
+                                            snackBarHostState.showSnackbar("Can't Display Ecchi Images, Sorry")
+                                        }
+                                    }
+                                },
+                                onDownloadClick = {
+                                    scope.launch {
+                                        viewModel.saveImage(image.id.toString())
+                                    }
+                                },
+                                downloadState = viewModel.state.value.downloadSuccess,
+                                downloading = viewModel.state.value.isDownloadImage
+                            )
+                        }
                     }
                 }
+                if (state.isNextPage) {
+                    item{
+                        Row(
+                            modifier = Modifier.fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
 
+                            CircularProgressIndicator()
+                        }
+                    }
+                }
+            }
+
+        if (state.isLoading) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator()
             }
         }
 
 
-
-
-        if (images.isEmpty() && !state.isLoading && state.error.isBlank()) {
-            Log.i("Ibyte", "list is empty")
-//            viewModel.onEvent(BrowserEvent.Refresh)
-        }
 
     }
 }
