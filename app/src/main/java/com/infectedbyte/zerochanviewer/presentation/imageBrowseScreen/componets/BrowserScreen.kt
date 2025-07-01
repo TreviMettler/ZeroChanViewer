@@ -13,22 +13,28 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FabPosition
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,10 +44,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.infectedbyte.zerochanviewer.R
+import com.infectedbyte.zerochanviewer.domain.model.DownloadStatus
 import com.infectedbyte.zerochanviewer.presentation.Screen
 import com.infectedbyte.zerochanviewer.presentation.imageBrowseScreen.ImageBrowseViewModel
 import kotlinx.coroutines.launch
@@ -58,10 +69,11 @@ fun ZeroImageListScreen(
     val scrollState = rememberLazyStaggeredGridState()
     val state = viewModel.state.value
     val images = state.images
-    var expanded by rememberSaveable { mutableStateOf(false) }
     var privateSearchQuery by rememberSaveable { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val snackBarHostState = remember { SnackbarHostState() }
+    var openDownloadMenu by remember { mutableStateOf(false) }
+    val downloads by viewModel.downloadQueue.collectAsState()
 
     val shouldLoadMore by remember { derivedStateOf {
         val itemCount = scrollState.layoutInfo.totalItemsCount
@@ -76,8 +88,7 @@ fun ZeroImageListScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        snackbarHost = { SnackbarHost(hostState = snackBarHostState)
-            },
+        snackbarHost = { SnackbarHost(hostState = snackBarHostState) },
         topBar = {
             Row(
                 Modifier
@@ -85,58 +96,98 @@ fun ZeroImageListScreen(
                     .padding(8.dp, bottom = 12.dp, top = 24.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-
                 SearchBar(
                     modifier = Modifier
                         .padding(4.dp)
                         .weight(9f),
-                    expanded = expanded,
+                    expanded = false,
                     inputField = {
                         SearchBarDefaults.InputField(
                             query = privateSearchQuery,
                             onQueryChange = { privateSearchQuery = it },
                             onSearch = {
                                 viewModel.onEvent(BrowserEvent.Search(it))
-                                expanded = false
                             },
-                            expanded = expanded,
+                            expanded = false,
                             onExpandedChange = {
-                                expanded = it
                             },
-                            placeholder = { Text("Search") },
-                            trailingIcon = {
-                                IconButton(onClick = {
-                                    expanded = !expanded
-                                }) {
-                                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
-                                }
-                            }
+                            placeholder = { Text("Search") }
                         )
                     },
-                    onExpandedChange = {
-                    expanded = it
-                    }
+                    onExpandedChange = {}
                 ) {
-                    Column {
-                        SortByRecency(viewModel)
-                        SortByDimensions(viewModel)
-                    }
-                }
-
-                IconButton(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(bottom = 8.dp)
-                        .align(Alignment.Bottom),
-                    onClick = {
-
-                    },
-                ) {
-                    Icon(Icons.Default.Settings, "Settings")
                 }
             }
 
 
+        },
+        floatingActionButtonPosition = FabPosition.Start,
+        floatingActionButton = {
+            FloatingActionButton(
+                modifier = Modifier,
+                onClick = {
+                    openDownloadMenu = true
+                }
+            ) {
+                if (downloads.isEmpty()) Icon(painterResource(R.drawable.download_arrow_cool), contentDescription = null)
+                if (downloads.any { it.status == DownloadStatus.IN_PROGRESS } && downloads.isNotEmpty()) Icon(painterResource(R.drawable.downloading), contentDescription = null)
+                if (downloads.all { it.status == DownloadStatus.COMPLETED } && downloads.isNotEmpty()) Icon(painterResource(R.drawable.download_done), contentDescription = null)
+                if (downloads.all { it.status == DownloadStatus.FAILED } && downloads.isNotEmpty()) Icon(Icons.Default.Close, contentDescription = null, tint = Color.Red)
+
+
+                DropdownMenu(
+                    expanded = openDownloadMenu,
+                    onDismissRequest = {
+                        openDownloadMenu = false
+                    }
+                ) {
+                    if (downloads.isEmpty()) {
+                        DropdownMenuItem(
+                            text = {
+                                Column(
+                                    modifier = Modifier.padding(12.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text("Just some crickets here")
+                                    Text("(You can click items to remove them)", color = Color.Gray, fontSize = 12.sp)
+                                }
+                                   },
+                            onClick = {}
+                        )
+                    } else {
+                        downloads.forEach { downloadInfo ->
+                            DropdownMenuItem(
+                                text = {
+                                    Column {
+                                        Card(modifier = Modifier.padding(4.dp)) {
+                                            Column(
+                                                modifier.padding(8.dp)
+                                            ) {
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    if (downloadInfo.status == DownloadStatus.IN_PROGRESS) Icon(painterResource(R.drawable.download_arrow_cool), contentDescription = null)
+                                                    if (downloadInfo.status == DownloadStatus.FAILED) Icon(Icons.Default.Close, contentDescription = null, tint = Color.Red)
+                                                    if (downloadInfo.status == DownloadStatus.COMPLETED) Icon(painterResource(R.drawable.download_done), contentDescription = null, tint = Color.Green)
+                                                    Text("Image: ${downloadInfo.imageName}", modifier = Modifier.padding(4.dp))
+
+                                                }
+                                                if (downloadInfo.status == DownloadStatus.IN_PROGRESS) {
+                                                    Text("Progress: ${downloadInfo.progress}%", modifier = Modifier.padding(4.dp))
+                                                    LinearProgressIndicator(progress = { downloadInfo.progress / 100f }, modifier = Modifier.padding(4.dp))
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                onClick = {
+                                    viewModel.onEvent(BrowserEvent.RemoveDownloadItem(downloadInfo.imageId))
+                                },
+                            )
+                        }
+                    }
+                }
+            }
         }
     ) { padding ->
         if (state.error.isNotBlank() && images.isEmpty()) {
@@ -170,21 +221,17 @@ fun ZeroImageListScreen(
                             ZeroImageItem(
                                 zeroImage = image,
                                 onClick = {
-                                    if (!image.tags.contains("Ecchi")) {
-                                        navController.navigate(Screen.ZeroImageScreenRoute(imageId = image.id.toString()))
-                                    } else {
-                                        scope.launch {
-                                            snackBarHostState.showSnackbar("Can't Display Ecchi Images, Sorry")
-                                        }
-                                    }
+                                    navController.navigate(Screen.ZeroImageScreenRoute(imageId = image.id.toString()))
                                 },
                                 onDownloadClick = {
                                     scope.launch {
-                                        viewModel.saveImage(image.id.toString())
+                                        snackBarHostState.showSnackbar(
+                                            message = "Downloading ${image.tag}",
+                                            duration = SnackbarDuration.Short
+                                        )
+                                        viewModel.saveImage(image.id.toString(), image.tag)
                                     }
-                                },
-                                downloadState = viewModel.state.value.downloadSuccess,
-                                downloading = viewModel.state.value.isDownloadImage
+                                }
                             )
                         }
                     }
@@ -192,7 +239,8 @@ fun ZeroImageListScreen(
                 if (state.isNextPage) {
                     item{
                         Row(
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
                                 .padding(16.dp)
                         ) {
 

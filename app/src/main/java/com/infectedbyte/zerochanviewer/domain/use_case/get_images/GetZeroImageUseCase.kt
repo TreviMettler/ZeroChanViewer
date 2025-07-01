@@ -18,7 +18,7 @@ class GetZeroImageUseCase @Inject constructor(
 ) {
 
     @RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
-    operator fun invoke(
+    fun loadImages(
         searchTags: String,
         params: Map<String, String>
     ): Flow<Resource<List<ZeroImage>>> = flow {

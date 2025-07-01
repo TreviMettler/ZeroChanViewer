@@ -1,6 +1,8 @@
 package com.infectedbyte.zerochanviewer.presentation.imageBrowseScreen.componets
 
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresExtension
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -13,11 +15,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedCard
@@ -30,22 +27,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.SubcomposeAsyncImage
+import com.infectedbyte.zerochanviewer.R
 import com.infectedbyte.zerochanviewer.domain.model.ZeroImage
 import com.valentinilk.shimmer.shimmer
 
+@RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
 @Composable
 fun ZeroImageItem(
     modifier: Modifier = Modifier,
     zeroImage: ZeroImage,
     onClick: (ZeroImage) -> Unit,
-    onDownloadClick: () -> Unit,
-    downloadState: Boolean?,
-    downloading: Boolean
-    )
-{
+    onDownloadClick: () -> Unit
+) {
     var imageBorder by remember { mutableStateOf(BorderStroke(1.dp, color = Color.Gray)) }
     if (zeroImage.tags.contains("Ecchi")){
         imageBorder = BorderStroke(1.dp, color = Color.Magenta)
@@ -93,23 +90,7 @@ fun ZeroImageItem(
                     onDownloadClick()
                 }
             ) {
-                if (!downloading) {
-                    when (downloadState) {
-                        null -> {
-                            Icon(Icons.Default.Add, "Download image")
-                        }
-
-                        true -> {
-                            Icon(Icons.Default.Check, "Download image", tint = Color.Green)
-
-                        }
-
-                        false -> {
-                            Icon(Icons.Default.Close, "Download image", tint = Color.Red)
-
-                        }
-                    }
-                } else { CircularProgressIndicator() }
+                Icon(painterResource(R.drawable.arrow_circle_down), contentDescription = null)
             }
             Text(
                 text = zeroImage.tag,

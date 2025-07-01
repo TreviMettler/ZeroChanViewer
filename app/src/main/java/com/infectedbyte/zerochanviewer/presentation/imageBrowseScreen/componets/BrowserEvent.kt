@@ -6,5 +6,6 @@ sealed class BrowserEvent {
     data class Search(val query: String): BrowserEvent()
     data class SortRecently(val sortType: String): BrowserEvent()
     data class SortDimensions(val sortType: String): BrowserEvent()
-    data class SortColor(val sortType: String): BrowserEvent()
+    data object FetchNextPage: BrowserEvent()
+    data class RemoveDownloadItem(val id: String): BrowserEvent()
 }

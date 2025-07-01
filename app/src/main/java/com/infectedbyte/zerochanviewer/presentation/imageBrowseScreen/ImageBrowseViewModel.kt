@@ -1,19 +1,29 @@
 package com.infectedbyte.zerochanviewer.presentation.imageBrowseScreen
 
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresExtension
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.infectedbyte.zerochanviewer.comman.Resource
+import com.infectedbyte.zerochanviewer.domain.model.DownloadInfo
+import com.infectedbyte.zerochanviewer.domain.model.DownloadStatus
+import com.infectedbyte.zerochanviewer.domain.model.ZeroImage
 import com.infectedbyte.zerochanviewer.domain.use_case.DownloadImages
 import com.infectedbyte.zerochanviewer.domain.use_case.get_images.GetZeroImageUseCase
 import com.infectedbyte.zerochanviewer.presentation.imageBrowseScreen.componets.BrowserEvent
 import com.infectedbyte.zerochanviewer.presentation.imageBrowseScreen.componets.BrowserState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 
 @RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
@@ -24,10 +34,46 @@ class ImageBrowseViewModel @Inject constructor(
 ): ViewModel() {
     private val _state = mutableStateOf(BrowserState())
     val state: State<BrowserState> = _state
+    private val _downloadQueue = MutableStateFlow<List<DownloadInfo>>(emptyList())
+    val downloadQueue: StateFlow<List<DownloadInfo>> = _downloadQueue.asStateFlow()
 
 
-    suspend fun saveImage(imageId: String) {
-        downloadImages.downloadImage(imageId)
+    suspend fun saveImage(imageId: String, name: String) {
+        val existingDownload = _downloadQueue.value.find { it.imageId == imageId }
+        if (existingDownload == null || existingDownload.status == DownloadStatus.FAILED) {
+            val newDownloadInfo = DownloadInfo(imageId, name, status = DownloadStatus.IN_PROGRESS)
+            _downloadQueue.update { currentList ->
+                val filteredList = currentList.filterNot { it.imageId == imageId && it.status == DownloadStatus.FAILED }
+                filteredList + newDownloadInfo
+            }
+        }
+
+        downloadImages.downloadImage(imageId).flowOn(Dispatchers.IO).collect { result ->
+            when (result) {
+                is Resource.Loading -> {
+                    _downloadQueue.update { currentList ->
+                        currentList.map {
+                            if (it.imageId == imageId && result.data != null) {
+                                it.copy(progress = result.data.progress)
+                            } else  it
+                        }
+                    }
+                }
+                is Resource.Success -> {
+                    _downloadQueue.update { currentList ->
+                        currentList.map {
+                            if (it.imageId == imageId && result.data != null) {
+                                it.copy(status = result.data.status)
+                            } else it
+                        }
+                    }
+                }
+                is Resource.Error -> {
+                    val errorMessage = result.msg
+                    Log.e("DownloadImage", "Error: $errorMessage")
+                }
+            }
+        }
     }
 
     init {
@@ -105,6 +151,14 @@ class ImageBrowseViewModel @Inject constructor(
 
 
             }
+            is BrowserEvent.RemoveDownloadItem -> {
+                _downloadQueue.update { currentList ->
+                    currentList.filterNot { downloadInfo ->
+                        downloadInfo.imageId == event.id
+                    }
+                }
+            }
+
         }
     }
 

@@ -8,8 +8,6 @@ data class BrowserState(
     val error: String = "",
     val isNextPage: Boolean = false,
     val searchQuery: String = "",
-    val searchParameter: Map<String, String> = mapOf("p" to "1", "l" to "20"),
-    val isDownloadImage: Boolean = false,
-    val downloadSuccess: Boolean? = null,
-    val sortDimension: String = ""
+    val searchParameter: Map<String, String> = mapOf("p" to "1", "l" to "250"),
+    val sortDimension: String = "",
 )
