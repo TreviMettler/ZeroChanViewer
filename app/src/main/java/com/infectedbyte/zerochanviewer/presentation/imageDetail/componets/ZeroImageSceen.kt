@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FabPosition
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -87,40 +89,25 @@ fun ZeroImageScreenPreview(modifier: Modifier = Modifier) {
                     }
                 }
             )
-
-
-
-//            CircularProgressIndicator()
-//            AsyncImage(
-//                model = image.small,
-//                contentDescription = image.primary,
-//                modifier
-//                    .aspectRatio(image.width.toFloat() / image.height.toFloat())
-//                    .padding(innerPadding)
-//                    .background(Color.Gray)
-//            )
         }
         if (showBottomSheet) {
-                    ModalBottomSheet(
-                        modifier = Modifier.background(MaterialTheme.colorScheme.background),
-                        onDismissRequest = {
-                            showBottomSheet = false
-                        },
-                        sheetState = sheetState
-                    ) {
-                        FlowRow(
-                            modifier =  Modifier
-                                .fillMaxWidth()
-                                .padding(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            image.tags.forEach { tag ->
-                                ImageTag(modifier = Modifier, tag)
-                            }
-                        }
-
+            ModalBottomSheet(
+                modifier = Modifier.background(MaterialTheme.colorScheme.background),
+                onDismissRequest = { showBottomSheet = false },
+                sheetState = sheetState
+            ) {
+                FlowRow(
+                    modifier =  Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    image.tags.forEach { tag ->
+                        ImageTag(modifier = Modifier, tag)
                     }
+                }
+            }
         }
     }
 
@@ -189,16 +176,30 @@ fun ZeroImageScreen(
                     },
                     sheetState = sheetState
                 ) {
-                    FlowRow(
-                        modifier =  Modifier
-                            .fillMaxWidth()
-                            .padding(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        itemVerticalAlignment = Alignment.CenterVertically
-                    ) {
-                        image.tags.sorted().forEach { tag ->
-                            ImageTag(modifier = Modifier, tag)
+                    Column {
+                        image.source?.let {
+                            Row(
+                                modifier.fillMaxWidth()
+                                    .padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                SourceTag(Modifier, image.source)
+                            }
+                            HorizontalDivider(modifier = Modifier.padding(4.dp))
+                        }
+
+                        FlowRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            itemVerticalAlignment = Alignment.CenterVertically
+                        ) {
+                            image.tags.sorted().forEach { tag ->
+                                ImageTag(modifier = Modifier, tag)
+                            }
                         }
                     }
                 }
@@ -206,7 +207,3 @@ fun ZeroImageScreen(
         }
     }
 }
-
-// todo
-// 4528939
-
