@@ -94,15 +94,15 @@ class ImageBrowseViewModel @Inject constructor(
             }
             is BrowserEvent.SortRecently -> {
                 when (event.sortType) {
-                    "latest" -> { _state.value = _state.value.copy(searchParameter = mapOf("s" to "id")) }
-                    "popular" -> { _state.value = _state.value.copy(searchParameter = mapOf("s" to "fav")) }
+                    "id" -> { _state.value = _state.value.copy(searchParameter = _state.value.searchParameter.plus("s" to "id")) }
+                    "fav" -> { _state.value = _state.value.copy(searchParameter = _state.value.searchParameter.plus("s" to "fav")) }
 
                 }
             }
             is BrowserEvent.FetchNextPage -> {
                 val currentPage = _state.value.searchParameter["p"]!!.toInt()
                 val nextPage = currentPage + 1
-                _state.value = _state.value.copy(searchParameter = mapOf("p" to nextPage.toString(), "l" to "100"))
+                _state.value = _state.value.copy(searchParameter = _state.value.searchParameter.plus("p" to nextPage.toString()))
                 getZeroImages(_state.value.images)
             }
             is BrowserEvent.SortDimensions -> {

@@ -15,18 +15,17 @@ import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridS
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DockedSearchBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -74,6 +73,7 @@ fun ZeroImageListScreen(
     val snackBarHostState = remember { SnackbarHostState() }
     var openDownloadMenu by remember { mutableStateOf(false) }
     val downloads by viewModel.downloadQueue.collectAsState()
+    var openSearchBar by remember { mutableStateOf(false) }
 
     val shouldLoadMore by remember { derivedStateOf {
         val itemCount = scrollState.layoutInfo.totalItemsCount
@@ -83,7 +83,7 @@ fun ZeroImageListScreen(
     } }
 
     LaunchedEffect(shouldLoadMore) {
-        if (!state.isLoading) viewModel.onEvent(BrowserEvent.FetchNextPage)
+        if (!state.isLoading && state.error.isBlank()) viewModel.onEvent(BrowserEvent.FetchNextPage)
     }
 
     Scaffold(
@@ -96,11 +96,11 @@ fun ZeroImageListScreen(
                     .padding(8.dp, bottom = 12.dp, top = 24.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                SearchBar(
+                DockedSearchBar(
                     modifier = Modifier
                         .padding(4.dp)
                         .weight(9f),
-                    expanded = false,
+                    expanded = openSearchBar,
                     inputField = {
                         SearchBarDefaults.InputField(
                             query = privateSearchQuery,
@@ -108,17 +108,41 @@ fun ZeroImageListScreen(
                             onSearch = {
                                 viewModel.onEvent(BrowserEvent.Search(it))
                             },
-                            expanded = false,
+                            expanded = openSearchBar,
                             onExpandedChange = {
+                                openSearchBar = it
                             },
                             placeholder = { Text("Search") }
                         )
                     },
-                    onExpandedChange = {}
+                    onExpandedChange = {
+                        openSearchBar = it
+                    }
                 ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        InputChip(
+                            selected = viewModel.state.value.searchParameter.contains("fav"),
+                            label = {
+                                Text("Popular")
+                            },
+                            onClick = {
+                                viewModel.onEvent(BrowserEvent.SortRecently("fav"))
+                            }
+                        )
+                        InputChip(
+                            selected = viewModel.state.value.searchParameter.contains("id"),
+                            label = {
+                                Text("Recent")
+                            },
+                            onClick = {
+                                viewModel.onEvent(BrowserEvent.SortRecently("id"))
+                            }
+                        )
+                    }
                 }
             }
-
 
         },
         floatingActionButtonPosition = FabPosition.Start,
@@ -156,41 +180,14 @@ fun ZeroImageListScreen(
                         )
                     } else {
                         downloads.forEach { downloadInfo ->
-                            DropdownMenuItem(
-                                text = {
-                                    Column {
-                                        Card(modifier = Modifier.padding(4.dp)) {
-                                            Column(
-                                                modifier.padding(8.dp)
-                                            ) {
-                                                Row(
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    if (downloadInfo.status == DownloadStatus.IN_PROGRESS) Icon(painterResource(R.drawable.download_arrow_cool), contentDescription = null)
-                                                    if (downloadInfo.status == DownloadStatus.FAILED) Icon(Icons.Default.Close, contentDescription = null, tint = Color.Red)
-                                                    if (downloadInfo.status == DownloadStatus.COMPLETED) Icon(painterResource(R.drawable.download_done), contentDescription = null, tint = Color.Green)
-                                                    Text("Image: ${downloadInfo.imageName}", modifier = Modifier.padding(4.dp))
-
-                                                }
-                                                if (downloadInfo.status == DownloadStatus.IN_PROGRESS) {
-                                                    Text("Progress: ${downloadInfo.progress}%", modifier = Modifier.padding(4.dp))
-                                                    LinearProgressIndicator(progress = { downloadInfo.progress / 100f }, modifier = Modifier.padding(4.dp))
-                                                }
-                                            }
-                                        }
-                                    }
-                                },
-                                onClick = {
-                                    viewModel.onEvent(BrowserEvent.RemoveDownloadItem(downloadInfo.imageId))
-                                },
-                            )
+                            DownloadMenu(modifier, downloadInfo, viewModel)
                         }
                     }
                 }
             }
         }
     ) { padding ->
-        if (state.error.isNotBlank() && images.isEmpty()) {
+        if (state.error.isNotBlank() && images.isEmpty()&& !state.isLoading) {
             Column(Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally) {
@@ -207,50 +204,9 @@ fun ZeroImageListScreen(
                 }) { Text("Refresh")}
             }
         }
-            LazyVerticalStaggeredGrid(
-                state = scrollState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                columns = StaggeredGridCells.Fixed(2)
-            ) {
 
-                if (!state.isLoading && images.isNotEmpty()) {
-                    items(images, key = {image -> image.id}) { image ->
-                        if (!image.tags.contains("Ecchi")) {
-                            ZeroImageItem(
-                                zeroImage = image,
-                                onClick = {
-                                    navController.navigate(Screen.ZeroImageScreenRoute(imageId = image.id.toString()))
-                                },
-                                onDownloadClick = {
-                                    scope.launch {
-                                        snackBarHostState.showSnackbar(
-                                            message = "Downloading ${image.tag}",
-                                            duration = SnackbarDuration.Short
-                                        )
-                                        viewModel.saveImage(image.id.toString(), image.tag)
-                                    }
-                                }
-                            )
-                        }
-                    }
-                }
-                if (state.isNextPage) {
-                    item{
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                        ) {
 
-                            CircularProgressIndicator()
-                        }
-                    }
-                }
-            }
-
-        if (state.isLoading) {
+        if (state.isLoading && state.error.isBlank()) {
             Column(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -259,8 +215,50 @@ fun ZeroImageListScreen(
                 CircularProgressIndicator()
             }
         }
+        LazyVerticalStaggeredGrid(
+            state = scrollState,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            columns = StaggeredGridCells.Fixed(2)
+        ) {
 
+            if (!state.isLoading && images.isNotEmpty()) {
+                items(images, key = {image -> image.id}) { image ->
+                    if (!image.tags.contains("Ecchi")) {
+                        ZeroImageItem(
+                            zeroImage = image,
+                            onClick = {
+                                navController.navigate(Screen.ZeroImageScreenRoute(imageId = image.id.toString()))
+                            },
+                            onDownloadClick = {
+                                scope.launch {
+                                    snackBarHostState.showSnackbar(
+                                        message = "Downloading ${image.tag}",
+                                        duration = SnackbarDuration.Short
+                                    )
+                                    viewModel.saveImage(image.id.toString(), image.tag)
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+            if (state.isNextPage) {
+                item{
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+
+                        CircularProgressIndicator()
+                    }
+                }
+            }
+        }
 
 
     }
 }
+

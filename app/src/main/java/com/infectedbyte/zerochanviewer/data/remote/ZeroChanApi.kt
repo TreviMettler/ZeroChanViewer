@@ -9,7 +9,7 @@ import retrofit2.http.QueryMap
 
 interface ZeroChanApi {
 
-    @Headers("My-Username: infectedbyte")
+    @Headers("ZeroChan-App: infectedbyte")
     @GET("/{tags}?&json")
     suspend fun getImages(
         @Path("tags") searchTags: String,
@@ -18,7 +18,7 @@ interface ZeroChanApi {
 
 
 
-    @Headers("My-Username: infectedbyte")
+    @Headers("ZeroChan-App: infectedbyte")
     @GET("/{imageId}?json")
     suspend fun getImageById(@Path("imageId") imageId: String): ZeroImageDetailDto
 

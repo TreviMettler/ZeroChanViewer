@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.annotation.RequiresExtension
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -97,7 +98,8 @@ fun ZeroImageItem(
                 fontSize = 12.sp,
                 modifier = Modifier
                     .padding(8.dp)
-
+                    .basicMarquee(),
+                maxLines = 1,
 
             )
         }
