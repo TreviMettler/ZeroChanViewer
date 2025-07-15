@@ -16,16 +16,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DockedSearchBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -60,9 +59,9 @@ import kotlinx.coroutines.launch
 @RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
 @Composable
 fun ZeroImageListScreen(
+    modifier: Modifier = Modifier,
     navController: NavController,
     viewModel: ImageBrowseViewModel = hiltViewModel(),
-    modifier: Modifier = Modifier,
 
 ) {
     val scrollState = rememberLazyStaggeredGridState()
@@ -73,7 +72,6 @@ fun ZeroImageListScreen(
     val snackBarHostState = remember { SnackbarHostState() }
     var openDownloadMenu by remember { mutableStateOf(false) }
     val downloads by viewModel.downloadQueue.collectAsState()
-    var openSearchBar by remember { mutableStateOf(false) }
 
     val shouldLoadMore by remember { derivedStateOf {
         val itemCount = scrollState.layoutInfo.totalItemsCount
@@ -96,11 +94,11 @@ fun ZeroImageListScreen(
                     .padding(8.dp, bottom = 12.dp, top = 24.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                DockedSearchBar(
+                SearchBar(
                     modifier = Modifier
                         .padding(4.dp)
                         .weight(9f),
-                    expanded = openSearchBar,
+                    expanded = false,
                     inputField = {
                         SearchBarDefaults.InputField(
                             query = privateSearchQuery,
@@ -108,38 +106,18 @@ fun ZeroImageListScreen(
                             onSearch = {
                                 viewModel.onEvent(BrowserEvent.Search(it))
                             },
-                            expanded = openSearchBar,
+                            expanded = false,
                             onExpandedChange = {
-                                openSearchBar = it
                             },
                             placeholder = { Text("Search") }
                         )
                     },
                     onExpandedChange = {
-                        openSearchBar = it
                     }
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        InputChip(
-                            selected = viewModel.state.value.searchParameter.contains("fav"),
-                            label = {
-                                Text("Popular")
-                            },
-                            onClick = {
-                                viewModel.onEvent(BrowserEvent.SortRecently("fav"))
-                            }
-                        )
-                        InputChip(
-                            selected = viewModel.state.value.searchParameter.contains("id"),
-                            label = {
-                                Text("Recent")
-                            },
-                            onClick = {
-                                viewModel.onEvent(BrowserEvent.SortRecently("id"))
-                            }
-                        )
                     }
                 }
             }
